@@ -1,0 +1,13 @@
+bin/
+.git
+.gitignore
+LICENSE
+logs.jsonl
+Makefile
+README.md
+dockerfiles/*
+.dockerignore
+.envrc
+.github
+.env.list
+.DS_Store
