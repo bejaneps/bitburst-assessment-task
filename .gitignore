@@ -1,6 +1,6 @@
 logs.jsonl
 bin/
 .envrc
-.env.list
 .DS_Store
 cover.out
+postgres_data/

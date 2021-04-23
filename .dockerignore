@@ -9,6 +9,6 @@ dockerfiles/*
 .dockerignore
 .envrc
 .github
-.env.list
+env.list
 .DS_Store
 cover.out

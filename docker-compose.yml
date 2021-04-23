@@ -1,0 +1,31 @@
+version: "2"
+services:
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: ${BITBURST_DATABASE_PASSWORD}
+      POSTGRES_USER: ${BITBURST_DATABASE_USERNAME}
+      POSTGRES_DB: ${BITBURST_DATABASE_NAME}
+      POSTGRES_HOST_AUTH_METHOD: md5
+    ports:
+      - "5432:5432"
+    volumes:
+      -  ./postgres_data:/var/lib/postgresql/data
+    shm_size: '256mb'
+
+  server:
+    build:
+      context: .
+      dockerfile: dockerfiles/local-dev.dockerfile
+    restart: on-failure:10
+    env_file:
+      - ./env.list
+    depends_on: ["db"]
+
+  tester-service:
+    build:
+      context: .
+      dockerfile: dockerfiles/tester-service.dockerfile
+    restart: on-failure:10
+    depends_on: ["server"]

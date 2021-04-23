@@ -6,5 +6,7 @@ import "net/http"
 func (srv *Server) newMux() *http.ServeMux {
 	mux := http.NewServeMux()
 
+	mux.HandleFunc("/callback", srv.handleCallback)
+
 	return mux
 }

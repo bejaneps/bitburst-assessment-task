@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -12,7 +13,12 @@ import (
 	"time"
 )
 
+// serviceAddr is needed to test using docker compose
+var serviceAddr = flag.String("service-addr", "localhost:9090", "address of test service")
+
 func main() {
+	flag.Parse()
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	go func() {
@@ -26,7 +32,7 @@ func main() {
 				ids[i] = strconv.Itoa(rng.Int() % 100)
 			}
 			body := bytes.NewBuffer([]byte(fmt.Sprintf(`{"object_ids":[%s]}`, strings.Join(ids, ","))))
-			resp, err := client.Post("http://localhost:9090/callback", "application/json", body)
+			resp, err := client.Post(fmt.Sprintf("http://%s/callback", *serviceAddr), "application/json", body)
 			if err != nil {
 				fmt.Println(err)
 				continue

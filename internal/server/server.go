@@ -1,6 +1,8 @@
 package server
 
 import (
+	"bitburst-assessment-task/internal/client"
+	"bitburst-assessment-task/internal/db"
 	"context"
 	"net/http"
 	"time"
@@ -20,12 +22,14 @@ type Config struct {
 // Server is a struct that holds http.Server and other dependencies of the app.
 type Server struct {
 	httpServer *http.Server
+	database   *db.DB
+	cli        *client.Client
 
 	conf *Config
 }
 
 // New constructs new server instance.
-func New(conf *Config) *Server {
+func New(conf *Config, database *db.DB, cli *client.Client) *Server {
 	srv := &Server{}
 
 	srv.httpServer = &http.Server{
@@ -35,6 +39,8 @@ func New(conf *Config) *Server {
 		Handler:      srv.newMux(),
 	}
 
+	srv.database = database
+	srv.cli = cli
 	srv.conf = conf
 
 	return srv

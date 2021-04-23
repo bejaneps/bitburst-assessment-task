@@ -8,7 +8,20 @@ log:
   beautify: true
 
 server:
-  listen_address: "0.0.0.0:8080"
+  listen_address: "0.0.0.0:9090"
   read_timeout: 0
   write_timeout: 0
   shutdown_timeout: 5s
+
+client:
+  tester_service_address: "127.0.0.1:9010"
+
+database:
+  host: "127.0.0.1"
+  port: "5432"
+  username: "postgres"
+  password: "postgres"
+  name: "postgres"
+  sslmode: "disable"
+  log_level: 1
+  migration_version: 2

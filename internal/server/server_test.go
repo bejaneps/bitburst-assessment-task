@@ -18,12 +18,12 @@ func TestNew(t *testing.T) {
 	}{
 		"default": {
 			input: &Config{
-				ListenAddress: "0.0.0.0:8080",
+				ListenAddress: "0.0.0.0:9090",
 				ReadTimeout:   time.Second * 2,
 				WriteTimeout:  time.Second * 4,
 			},
 			want: &Server{httpServer: &http.Server{
-				Addr:         "0.0.0.0:8080",
+				Addr:         "0.0.0.0:9090",
 				ReadTimeout:  time.Second * 2,
 				WriteTimeout: time.Second * 4,
 			}},
@@ -32,7 +32,7 @@ func TestNew(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			got := New(tc.input)
+			got := New(tc.input, nil, nil)
 
 			diff := ""
 
@@ -65,7 +65,7 @@ func TestServerStartAndClose(t *testing.T) {
 						ShutdownTimeout: 2 * time.Second,
 					},
 					httpServer: &http.Server{
-						Addr: "0.0.0.0:8080",
+						Addr: "0.0.0.0:9090",
 					},
 				},
 				errChan: make(chan error),

@@ -1,7 +1,9 @@
 package main
 
 import (
-	"bitburst-task/internal/server"
+	"bitburst-assessment-task/internal/client"
+	"bitburst-assessment-task/internal/db"
+	"bitburst-assessment-task/internal/server"
 	"fmt"
 	"io"
 	"os"
@@ -35,6 +37,10 @@ type config struct {
 	} `mapstructure:"log"`
 
 	Server server.Config `mapstructure:"server"`
+
+	Client client.Config `mapstructure:"client"`
+
+	Database db.Config `mapstructure:"database"`
 }
 
 // setConfigDetails sets command flags, defaults and envs and default config file details
@@ -55,6 +61,8 @@ func setConfigDetails(v *viper.Viper, p *pflag.FlagSet) {
 	v.AutomaticEnv()
 
 	// set command flags, their defaults and bind envs
+
+	// for logs
 	p.String("log-path", "./logs.jsonl", "local path of a filename for storing logs")
 	v.BindPFlag("log.path", p.Lookup("log-path"))
 	v.SetDefault("log.path", "./logs.jsonl")
@@ -67,10 +75,11 @@ func setConfigDetails(v *viper.Viper, p *pflag.FlagSet) {
 	v.BindPFlag("log.beautify", p.Lookup("log-beautify"))
 	v.SetDefault("log.beautify", false)
 
-	p.StringP("server-listen-address", "l", "0.0.0.0:8080", "listen address for http server, port must be included")
+	// for server
+	p.StringP("server-listen-address", "l", "0.0.0.0:9090", "listen address for http server, port must be included")
 	_ = v.BindPFlag("server.listen_address", p.Lookup("server-listen-address"))
 	v.BindEnv("server.listen_address", "SERVER_LISTEN_ADDRESS")
-	v.SetDefault("server.listen_address", "0.0.0.0:8080")
+	v.SetDefault("server.listen_address", "0.0.0.0:9090")
 
 	p.Duration("server-read-timeout", 0, "timeout duration for the server to read request body")
 	_ = v.BindPFlag("server.read_timeout", p.Lookup("server-read-timeout"))
@@ -83,6 +92,50 @@ func setConfigDetails(v *viper.Viper, p *pflag.FlagSet) {
 	p.Duration("server-shutdown-timeout", time.Second*5, "timeout duration for the server to shutdown")
 	_ = v.BindPFlag("server.shutdown_timeout", p.Lookup("server-shutdown-timeout"))
 	v.SetDefault("server.shutdown_timeout", time.Second*5)
+
+	// for client
+	p.String("client-tester-service-address", "127.0.0.1:9010", "listen address of tester service")
+	_ = v.BindPFlag("client.tester_service_address", p.Lookup("client-tester-service-address"))
+	v.BindEnv("client.tester_service_address", "CLIENT_TESTER_SERVICE_ADDRESS")
+	v.SetDefault("client.tester_service_address", "127.0.0.1:9010")
+
+	// for database
+	p.StringP("database-host", "h", "127.0.0.1", "database host")
+	v.BindPFlag("database.host", p.Lookup("database-host"))
+	v.BindEnv("database.host", "DATABASE_HOST")
+	v.SetDefault("database.host", "127.0.0.1")
+
+	p.StringP("database-port", "p", "5432", "database port")
+	v.BindPFlag("database.port", p.Lookup("database-port"))
+	v.BindEnv("database.port", "DATABASE_PORT")
+	v.SetDefault("database.port", "5432")
+
+	p.StringP("database-username", "u", "postgres", "database username")
+	v.BindPFlag("database.username", p.Lookup("database-username"))
+	v.BindEnv("database.username", "DATABASE_USERNAME")
+	v.SetDefault("database.username", "postgres")
+
+	p.String("database-password", "postgres", "database password")
+	v.BindPFlag("database.password", p.Lookup("database-password"))
+	v.BindEnv("database.password", "DATABASE_PASSWORD")
+	v.SetDefault("database.password", "postgres")
+
+	p.StringP("database-name", "n", "postgres", "database name")
+	v.BindPFlag("database.name", p.Lookup("database-name"))
+	v.BindEnv("database.name", "DATABASE_NAME")
+	v.SetDefault("database.name", "postgres")
+
+	p.String("database-sslmode", "disable", "database sslmode")
+	v.BindPFlag("database.sslmode", p.Lookup("database-sslmode"))
+	v.SetDefault("database.sslmode", "disable")
+
+	p.Int("database-log-level", 1, "database log level")
+	v.BindPFlag("database.log_level", p.Lookup("database-log-level"))
+	v.SetDefault("database.log_level", 1)
+
+	p.Int("database-migration-version", 2, "database migration version")
+	v.BindPFlag("database.migration_version", p.Lookup("database-migration-version"))
+	v.SetDefault("database.migration_version", 2)
 }
 
 // Will be set using ldflags
@@ -95,6 +148,9 @@ var (
 const appName = "Bitburst Assessment Task"
 
 func main() {
+	retcode := 0
+	defer func() { os.Exit(retcode) }() // call os.Exit at the end of main, so other deferred calls don't get discarded
+
 	v, p := viper.New(), pflag.NewFlagSet(appName, pflag.ExitOnError)
 
 	setConfigDetails(v, p)
@@ -104,10 +160,12 @@ func main() {
 
 	_ = p.Parse(os.Args[1:])
 
+	// check if version wants to be printed
 	if v, _ := p.GetBool("version"); v {
 		fmt.Printf("%s version %s (%s) built on %s\n", appName, version, commitHash, buildDate)
 
-		os.Exit(0)
+		retcode = 0
+		return
 	}
 
 	// check if config path is supplied
@@ -135,13 +193,17 @@ func main() {
 
 	// unmarshal application configuration from conf file into conf struct
 	if err := v.Unmarshal(&conf); err != nil {
-		log.Logger.Fatal().Err(err).Msg("failed to unmarshal config file")
+		log.Logger.Err(err).Msg("failed to unmarshal config file")
+		retcode = -1
+		return
 	}
 
 	// create new file for storing logs
 	conf.Log.file, err = os.Create(conf.Log.Path)
 	if err != nil {
-		log.Logger.Fatal().Err(err).Msg("failed to create log file")
+		log.Logger.Err(err).Msg("failed to create log file")
+		retcode = -1
+		return
 	}
 	defer func() {
 		if err := conf.Log.file.Close(); err != nil {
@@ -169,8 +231,46 @@ func main() {
 	// set verbosity level
 	zerolog.SetGlobalLevel(zerolog.Level(conf.Log.Level))
 
+	// set up database
+	log.Logger.Info().Msg("connecting to database")
+	var (
+		database *db.DB
+		ok       bool
+	)
+	for i := 0; i < 3; i++ {
+		database, err = db.New(&conf.Database)
+		if err != nil {
+			// sometimes database may be off for some secs, so retrying is a good practice
+			if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "failed to ping database") {
+				log.Logger.Warn().Err(err).Msg("couldn't establish database connection, retrying in 5 secs...")
+				time.Sleep(5 * time.Second)
+				continue
+			} else {
+				log.Logger.Err(err).Msg("failed to establish database connection")
+				retcode = -1
+				return
+			}
+		}
+		ok = true
+		break
+	}
+	if !ok {
+		log.Logger.Err(err).Msg("failed to establish database connection, database is off")
+		retcode = -1
+		return
+	}
+	defer func() {
+		if database.Close(); err != nil {
+			log.Logger.Err(err).Msg("failed to close database connection")
+			retcode = -1
+		}
+	}()
+
+	// set up client
+	cli := client.New(&conf.Client)
+
 	// set up server
-	srv := server.New(&conf.Server)
+	srv := server.New(&conf.Server, database, cli)
 
 	// start the server
 	log.Logger.Info().Str("listen-address", conf.Server.ListenAddress).Msg("starting the server")
@@ -183,7 +283,7 @@ func main() {
 
 	select {
 	case q := <-quit:
-		log.Logger.Info().Str("signal", q.String()).Msg("received signal, closing server and other opened resources")
+		log.Logger.Info().Str("signal", q.String()).Msg("received signal, closing server")
 
 		err := srv.Close()
 		if err != nil {

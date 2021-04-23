@@ -14,10 +14,9 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download -x
 COPY . .
 
 # run tests
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-test \
-    GIT_TERMINAL_PROMPT=1 \
-    go test -v ./...
+# RUN --mount=type=cache,target=/go/pkg/mod \
+#     --mount=type=cache,target=/root/.cache/go-test \
+#     go test -v ./...
 
 # build executable
 RUN --mount=type=cache,target=/go/pkg/mod \
@@ -31,6 +30,6 @@ COPY --from=build /go/src/app/bin /go/src/app/bin
 
 WORKDIR /go/src/app
 
-EXPOSE 8080
+EXPOSE 9090
 
-CMD ["./bin/bitburst", "--log-beautify"]
+CMD ["./bin/bitburst", "--log-beautify", "--log-level", "0"]
