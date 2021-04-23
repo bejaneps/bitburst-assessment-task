@@ -3,3 +3,4 @@ bin/
 .envrc
 .env.list
 .DS_Store
+cover.out

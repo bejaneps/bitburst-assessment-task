@@ -11,3 +11,4 @@ dockerfiles/*
 .github
 .env.list
 .DS_Store
+cover.out

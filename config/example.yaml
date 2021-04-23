@@ -1,0 +1,14 @@
+# this config file serves as an example,
+# please create your own config file, prefill it
+# and then pass it to program via --config-path flag
+
+log:
+  path: "./logs.jsonl"
+  level: 1
+  beautify: true
+
+server:
+  listen_address: "0.0.0.0:8080"
+  read_timeout: 0
+  write_timeout: 0
+  shutdown_timeout: 5s
