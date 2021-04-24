@@ -41,3 +41,53 @@ Bonus:
 * it is a nice bonus if you provide some way to set up the things needed for us to
 
 Test your code.
+
+# Tests
+
+To run the tests you can either do it manually using **go** command:
+```bash
+go test -v ./...
+
+# print coverage as well
+go test -v -coverprofile cover.out ./...
+go tool cover -html cover.out
+```
+
+Or using [tests.dockerfile](dockerfiles/tests.dockerfile)
+```
+docker build -t "bitburst:tests" -f dockerfiles/tests.Dockerfile
+docker run bitburst:tests
+```
+
+# Build
+
+In order to build the application, you only need Go installed. Example:
+```
+go build -o ./bin/bitburst ./cmd/bitburst/main.go
+```
+
+
+On the other hand, if you wish to use Docker for trying out the application, you can use **docker-compose.yaml** file. Example:
+```
+docker-compose up
+
+or
+
+docker compose up
+```
+
+# Notes
+
+In a production environment metrics, tracing and error reporting are usually set for the service, but for the sake of brewity I didn't include them in application. Also, one might thing that for such small task all this packages are overkill, but in reality when writing production grade services, code complexity grows, more features are added, and so this packages help to eliminate boilerplate coding and follow DRY principle and even improve performance
+
+For configuration management I used [spf13/viper]("https://github.com/spf13/viper") package, as it's the best solution available for Go configuration management
+
+For postgres driver I used [jackc/pgx]("https://github.com/jackc/pgx") package, as it's better than std database/sql package and faster than jmoiron/sqlx package
+
+Instead of using raw sql queries, I prefer to use Go type safe generator [kyleconroy/sqlc]("https://github.com/kyleconroy/sqlc"), it's much more convenient and saves you from having typos in your queries. Besided that, it works like a charm with migrations and [jackc/pgx]("https://github.com/jackc/pgx") package
+
+For logging I used [rs/zerolog]("https://github.com/rs/zerolog"), as it's zero allocations logger, I could use uber's zap logging package as well, but zerolog seems better for me
+
+For tests I used [stretchr/testify]("https://github.com/stretchr/testify") package, as it provides greate set of functions that removed useless boilerplates in form of `if err != nil` and also it provides convenient logging messages. I also used [gocmp/cmp]("https://github.com/google/go-cmp") in tests where difference between input and output was needed to be shown
+
+For working with json I used [json-iterator/go]("github.com/json-iterator/go") package, as it's much more faster than stdlib json package
