@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 // ProcessObjects inserts objects in database if they don't exist,
@@ -22,7 +23,9 @@ func (db *DB) ProcessObjects(ctx context.Context, ids []int32, onlines []bool) (
 	}
 	defer func() { // rollback tx on error
 		if err != nil {
-			_ = tx.Rollback()
+			if terr := tx.Rollback(); terr != nil {
+				log.Logger.Warn().Ints32("ids", ids).Msg("failed to rollback transaction")
+			}
 		}
 	}()
 	txQ := db.q.WithTx(tx) // attach queries in tx

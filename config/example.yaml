@@ -24,4 +24,4 @@ database:
   name: "postgres"
   sslmode: "disable"
   log_level: 1
-  migration_version: 2
+  migration_version: 3

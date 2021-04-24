@@ -32,7 +32,7 @@ generate-sqlc:
 	sqlc generate
 
 build:
-	go build -ldflags "${LDFLAGS}" -o ./bin/bitburst ./cmd/bitburst/*.go
+	go build -trimpath -ldflags "${LDFLAGS}" -o ./bin/bitburst ./cmd/bitburst/*.go
 
 run:
 	./bin/bitburst --log-beautify
