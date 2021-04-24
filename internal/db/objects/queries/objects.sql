@@ -1,24 +1,9 @@
--- name: InsertObjectOrUpdate :one
-INSERT INTO bitburst."objects" ( o_id )
-VALUES
-	( $1 ) ON CONFLICT ( o_id ) DO
-UPDATE
-	SET last_seen = CURRENT_TIMESTAMP,
-		online = TRUE
-	RETURNING o_id;
-
 -- name: InsertObjectsOrUpdate :many
-INSERT INTO bitburst."objects" ( o_id ) 
-VALUES ( UNNEST(@o_ids::INT[]) ) ON CONFLICT ( o_id ) DO
+INSERT INTO bitburst."objects" ( o_id, online )
+VALUES ( UNNEST($1::INT[]), UNNEST($2::BOOLEAN[]) ) ON CONFLICT ( o_id ) DO
 UPDATE
 	SET last_seen = CURRENT_TIMESTAMP,
-		online = TRUE
-	RETURNING o_id;
-
--- name: UpdateObject :one
-UPDATE bitburst."objects"
-	SET online = FALSE
-	WHERE o_id = $1
+		online = EXCLUDED.online
 	RETURNING o_id;
 
 -- name: DeleteNotSeenObjects :many

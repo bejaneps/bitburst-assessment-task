@@ -39,7 +39,7 @@ type Config struct {
 // DB contains Postgres database dependencies
 type DB struct {
 	sqlDB *sql.DB
-	q     objects.Querier
+	q     *objects.Queries
 }
 
 // NewEnv initializez connection to Postgres database and injects dependencies to it, returns a structure for interacting with database.

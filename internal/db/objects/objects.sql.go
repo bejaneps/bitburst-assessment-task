@@ -40,34 +40,22 @@ func (q *Queries) DeleteNotSeenObjects(ctx context.Context) ([]int32, error) {
 	return items, nil
 }
 
-const insertObjectOrUpdate = `-- name: InsertObjectOrUpdate :one
-INSERT INTO bitburst."objects" ( o_id )
-VALUES
-	( $1 ) ON CONFLICT ( o_id ) DO
+const insertObjectsOrUpdate = `-- name: InsertObjectsOrUpdate :many
+INSERT INTO bitburst."objects" ( o_id, online )
+VALUES ( UNNEST($1::INT[]), UNNEST($2::BOOLEAN[]) ) ON CONFLICT ( o_id ) DO
 UPDATE
 	SET last_seen = CURRENT_TIMESTAMP,
-		online = TRUE
+		online = EXCLUDED.online
 	RETURNING o_id
 `
 
-func (q *Queries) InsertObjectOrUpdate(ctx context.Context, oID int32) (int32, error) {
-	row := q.queryRow(ctx, q.insertObjectOrUpdateStmt, insertObjectOrUpdate, oID)
-	var o_id int32
-	err := row.Scan(&o_id)
-	return o_id, err
+type InsertObjectsOrUpdateParams struct {
+	Column1 []int32 `json:"column_1"`
+	Column2 []bool  `json:"column_2"`
 }
 
-const insertObjectsOrUpdate = `-- name: InsertObjectsOrUpdate :many
-INSERT INTO bitburst."objects" ( o_id ) 
-VALUES ( UNNEST($1::INT[]) ) ON CONFLICT ( o_id ) DO
-UPDATE
-	SET last_seen = CURRENT_TIMESTAMP,
-		online = TRUE
-	RETURNING o_id
-`
-
-func (q *Queries) InsertObjectsOrUpdate(ctx context.Context, oIds []int32) ([]int32, error) {
-	rows, err := q.query(ctx, q.insertObjectsOrUpdateStmt, insertObjectsOrUpdate, pq.Array(oIds))
+func (q *Queries) InsertObjectsOrUpdate(ctx context.Context, arg InsertObjectsOrUpdateParams) ([]int32, error) {
+	rows, err := q.query(ctx, q.insertObjectsOrUpdateStmt, insertObjectsOrUpdate, pq.Array(arg.Column1), pq.Array(arg.Column2))
 	if err != nil {
 		return nil, err
 	}
@@ -87,18 +75,4 @@ func (q *Queries) InsertObjectsOrUpdate(ctx context.Context, oIds []int32) ([]in
 		return nil, err
 	}
 	return items, nil
-}
-
-const updateObject = `-- name: UpdateObject :one
-UPDATE bitburst."objects"
-	SET online = FALSE
-	WHERE o_id = $1
-	RETURNING o_id
-`
-
-func (q *Queries) UpdateObject(ctx context.Context, oID int32) (int32, error) {
-	row := q.queryRow(ctx, q.updateObjectStmt, updateObject, oID)
-	var o_id int32
-	err := row.Scan(&o_id)
-	return o_id, err
 }

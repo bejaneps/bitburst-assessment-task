@@ -10,9 +10,6 @@ packages:
     emit_interface: true
     emit_exact_table_names: false
 overrides:
-  - go_type: "gopkg.in/guregu/null.v4/zero.Int"
-    db_type: "int"
-    nullable: true
   - go_type: "gopkg.in/guregu/null.v4/zero.Time"
     db_type: "timestamptz"
     nullable: true

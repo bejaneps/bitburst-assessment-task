@@ -37,13 +37,13 @@ func New(conf *Config) *Client {
 
 // ObjectsRespBody is a response from tester_service /objects/:id route
 type ObjectsRespBody struct {
-	ID     int
+	ID     int32
 	Online bool
 }
 
 // Do sends a list of object ids to tester service concurrently,
 // and gets their online statuses.
-func (cli *Client) Do(objectIDs []int) []*ObjectsRespBody {
+func (cli *Client) Do(objectIDs []int32) []*ObjectsRespBody {
 	objStatuses := make([]*ObjectsRespBody, 0, len(objectIDs))
 	objStatusesChan := make(chan *ObjectsRespBody, len(objectIDs))
 	go func() { // receive object ids from goroutines
@@ -58,7 +58,7 @@ func (cli *Client) Do(objectIDs []int) []*ObjectsRespBody {
 	wg := &sync.WaitGroup{}
 	for _, v := range objectIDs {
 		wg.Add(1)
-		go func(id int, objStatusesChan chan *ObjectsRespBody, wg *sync.WaitGroup) {
+		go func(id int32, objStatusesChan chan *ObjectsRespBody, wg *sync.WaitGroup) {
 			defer wg.Done()
 
 			// get the object status
@@ -68,9 +68,9 @@ func (cli *Client) Do(objectIDs []int) []*ObjectsRespBody {
 				// if it's not the case then report the error
 				urlErr := err.(*url.Error)
 				if urlErr.Timeout() {
-					log.Logger.Warn().Err(err).Int("id", id).Msg("failed to get object status due to timeout")
+					log.Logger.Warn().Err(err).Int32("id", id).Msg("failed to get object status due to timeout")
 				} else {
-					log.Logger.Warn().Err(err).Int("id", id).Msg("failed to get object status due to unknown reason")
+					log.Logger.Warn().Err(err).Int32("id", id).Msg("failed to get object status due to unknown reason")
 				}
 				return
 			}

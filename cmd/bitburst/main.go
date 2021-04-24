@@ -133,9 +133,9 @@ func setConfigDetails(v *viper.Viper, p *pflag.FlagSet) {
 	v.BindPFlag("database.log_level", p.Lookup("database-log-level"))
 	v.SetDefault("database.log_level", 1)
 
-	p.Int("database-migration-version", 2, "database migration version")
+	p.Int("database-migration-version", 3, "database migration version")
 	v.BindPFlag("database.migration_version", p.Lookup("database-migration-version"))
-	v.SetDefault("database.migration_version", 2)
+	v.SetDefault("database.migration_version", 3)
 }
 
 // Will be set using ldflags

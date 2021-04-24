@@ -25,14 +25,8 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteNotSeenObjectsStmt, err = db.PrepareContext(ctx, deleteNotSeenObjects); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteNotSeenObjects: %w", err)
 	}
-	if q.insertObjectOrUpdateStmt, err = db.PrepareContext(ctx, insertObjectOrUpdate); err != nil {
-		return nil, fmt.Errorf("error preparing query InsertObjectOrUpdate: %w", err)
-	}
 	if q.insertObjectsOrUpdateStmt, err = db.PrepareContext(ctx, insertObjectsOrUpdate); err != nil {
 		return nil, fmt.Errorf("error preparing query InsertObjectsOrUpdate: %w", err)
-	}
-	if q.updateObjectStmt, err = db.PrepareContext(ctx, updateObject); err != nil {
-		return nil, fmt.Errorf("error preparing query UpdateObject: %w", err)
 	}
 	return &q, nil
 }
@@ -44,19 +38,9 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing deleteNotSeenObjectsStmt: %w", cerr)
 		}
 	}
-	if q.insertObjectOrUpdateStmt != nil {
-		if cerr := q.insertObjectOrUpdateStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing insertObjectOrUpdateStmt: %w", cerr)
-		}
-	}
 	if q.insertObjectsOrUpdateStmt != nil {
 		if cerr := q.insertObjectsOrUpdateStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing insertObjectsOrUpdateStmt: %w", cerr)
-		}
-	}
-	if q.updateObjectStmt != nil {
-		if cerr := q.updateObjectStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing updateObjectStmt: %w", cerr)
 		}
 	}
 	return err
@@ -99,9 +83,7 @@ type Queries struct {
 	db                        DBTX
 	tx                        *sql.Tx
 	deleteNotSeenObjectsStmt  *sql.Stmt
-	insertObjectOrUpdateStmt  *sql.Stmt
 	insertObjectsOrUpdateStmt *sql.Stmt
-	updateObjectStmt          *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
@@ -109,8 +91,6 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		db:                        tx,
 		tx:                        tx,
 		deleteNotSeenObjectsStmt:  q.deleteNotSeenObjectsStmt,
-		insertObjectOrUpdateStmt:  q.insertObjectOrUpdateStmt,
 		insertObjectsOrUpdateStmt: q.insertObjectsOrUpdateStmt,
-		updateObjectStmt:          q.updateObjectStmt,
 	}
 }
