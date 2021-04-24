@@ -7,13 +7,14 @@ import (
 	"database/sql"
 	"net/url"
 
+	"github.com/jackc/pgx/v4/pgxpool"
+
 	"github.com/jackc/pgx/v4/log/zerologadapter"
 	"github.com/jackc/pgx/v4/stdlib"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	pgx "github.com/jackc/pgx/v4"
 	"github.com/pkg/errors"
 
 	bindata "github.com/golang-migrate/migrate/v4/source/go_bindata"
@@ -56,18 +57,22 @@ func New(conf *Config) (db *DB, err error) {
 		Path:   conf.Name,
 	}
 	connURL.Query().Add("sslmode", conf.SSLmode)
+	connURL.Query().Add("pool_max_conns", "100")
+	connURL.Query().Add("pool_max_conn_lifetime", "5s")
+	connURL.Query().Add("pool_max_conn_idle_time", "5s")
+	connURL.Query().Add("pool_health_check_period", "20s")
 
 	// parse connection url
-	connConfig, err := pgx.ParseConfig(connURL.String())
+	connConfig, err := pgxpool.ParseConfig(connURL.String())
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to parse connection url")
 	}
 
 	// assign zerolog logger to pgx logger and only display error level logs
-	connConfig.Logger = zerologadapter.NewLogger(log.Logger.With().Logger().Level(zerolog.Level(conf.LogLevel)))
+	connConfig.ConnConfig.Logger = zerologadapter.NewLogger(log.Logger.With().Logger().Level(zerolog.Level(conf.LogLevel)))
 
 	// open connection to postgres
-	db.sqlDB = stdlib.OpenDB(*connConfig)
+	db.sqlDB = stdlib.OpenDB(*connConfig.ConnConfig)
 	err = db.sqlDB.Ping()
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to ping database")

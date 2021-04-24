@@ -15,9 +15,20 @@ func (db *DB) ProcessObjects(ctx context.Context, ids []int32, onlines []bool) (
 	if err := db.sqlDB.PingContext(ctx); err != nil {
 		return nil, nil, errors.WithMessage(err, "failed to ping database")
 	}
+	
+	// acquire db connection from pool
+	conn, err := db.sqlDB.Conn(ctx)
+	if err != nil {
+		return nil, nil, errors.WithMessage(err, "failed to acquire connection from pool")
+	}
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Logger.Warn().Msg("failed to release connection to pool")
+		}
+	}()
 
 	// start tx
-	tx, err := db.sqlDB.BeginTx(context.Background(), nil)
+	tx, err := conn.BeginTx(context.Background(), nil)
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "failed to begin transaction")
 	}
