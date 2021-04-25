@@ -13,11 +13,6 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download -x
 # copy all source files to container
 COPY . .
 
-# run tests
-# RUN --mount=type=cache,target=/go/pkg/mod \
-#     --mount=type=cache,target=/root/.cache/go-test \
-#     go test -v ./...
-
 # build executable
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
