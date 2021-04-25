@@ -4,6 +4,7 @@ import (
 	"bitburst-assessment-task/internal/client"
 	"bitburst-assessment-task/internal/db"
 	"bitburst-assessment-task/internal/server"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -129,10 +130,6 @@ func setConfigDetails(v *viper.Viper, p *pflag.FlagSet) {
 	v.BindPFlag("database.sslmode", p.Lookup("database-sslmode"))
 	v.SetDefault("database.sslmode", "disable")
 
-	p.Int("database-log-level", 1, "database log level")
-	v.BindPFlag("database.log_level", p.Lookup("database-log-level"))
-	v.SetDefault("database.log_level", 1)
-
 	p.Int("database-migration-version", 3, "database migration version")
 	v.BindPFlag("database.migration_version", p.Lookup("database-migration-version"))
 	v.SetDefault("database.migration_version", 3)
@@ -238,7 +235,7 @@ func main() {
 		ok       bool
 	)
 	for i := 0; i < 3; i++ {
-		database, err = db.New(&conf.Database)
+		database, err = db.New(&conf.Database, &log.Logger)
 		if err != nil {
 			// sometimes database may be off for some secs, so retrying is a good practice
 			if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "failed to ping database") {
@@ -260,8 +257,8 @@ func main() {
 		return
 	}
 	defer func() {
-		if database.Close(); err != nil {
-			log.Logger.Err(err).Msg("failed to close database connection")
+		if err := database.Close(); err != nil {
+			log.Logger.Warn().Err(err).Msg("failed to close database connection")
 			retcode = -1
 		}
 	}()
@@ -277,17 +274,23 @@ func main() {
 	srvErrChan := make(chan error)
 	go srv.Start(srvErrChan)
 
+	// run a background job that will delete objects that weren't seen for 30 seconds
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go database.DeleteNotSeenObjects(ctx)
+
 	// catch interrupt signals
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	select {
 	case q := <-quit:
-		log.Logger.Info().Str("signal", q.String()).Msg("received signal, closing server")
+		log.Logger.Info().Str("signal", q.String()).Msg("received signal, closing server and other opened resources")
 
-		err := srv.Close()
-		if err != nil {
+		// close server
+		if err := srv.Close(); err != nil {
 			log.Logger.Warn().Err(err).Msg("failed to close the server")
+			retcode = -1
 		}
 	case err := <-srvErrChan:
 		log.Logger.Err(err).Msg("failed to start the server, closing other opened resources")

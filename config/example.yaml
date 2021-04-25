@@ -23,5 +23,4 @@ database:
   password: "postgres"
   name: "postgres"
   sslmode: "disable"
-  log_level: 1
   migration_version: 3

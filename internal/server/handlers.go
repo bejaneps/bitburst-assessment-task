@@ -52,13 +52,13 @@ func (srv *Server) handleCallback(rw http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
 		defer cancel()
 
-		modifiedIDs, deletedIDs, err := srv.database.ProcessObjects(ctx, ids, onlines)
+		modifiedIDs, err := srv.database.InsertObjectsOrUpdate(ctx, ids, onlines)
 		if err != nil {
 			log.Logger.Err(err).Msg("failed to process objects in database")
 			return
 		}
 
-		log.Logger.Debug().Ints32("modified_ids", modifiedIDs).Ints32("deleted_ids", deletedIDs).Msg("succeeded to process objects in database")
+		log.Logger.Debug().Ints32("modified_ids", modifiedIDs).Msg("succeeded to process objects in database")
 	}()
 
 	// notify tester_service that we received objects successfully

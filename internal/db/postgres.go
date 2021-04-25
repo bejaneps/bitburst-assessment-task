@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v4/stdlib"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	"github.com/pkg/errors"
 
@@ -34,20 +33,22 @@ type Config struct {
 
 	MigrationVersion int    `mapstructure:"migration_version"`
 	SSLmode          string `mapstructure:"sslmode"` // enable/disable
-	LogLevel         int    `mapstructure:"log_level"`
 }
 
 // DB contains Postgres database dependencies
 type DB struct {
 	sqlDB *sql.DB
 	q     *objects.Queries
+	logger *zerolog.Logger
 }
 
 // NewEnv initializez connection to Postgres database and injects dependencies to it, returns a structure for interacting with database.
-func New(conf *Config) (db *DB, err error) {
+func New(conf *Config, logger *zerolog.Logger) (db *DB, err error) {
 	defer errors.Wrap(err, "db.NewEnv")
 
-	db = &DB{}
+	db = &DB{
+		logger: logger,
+	}
 
 	// constuct connection url in form of: postgresql://{username}:{password}@{host}:{port}/{database}?sslmode=true|false
 	connURL := &url.URL{
@@ -69,7 +70,7 @@ func New(conf *Config) (db *DB, err error) {
 	}
 
 	// assign zerolog logger to pgx logger and only display error level logs
-	connConfig.ConnConfig.Logger = zerologadapter.NewLogger(log.Logger.With().Logger().Level(zerolog.Level(conf.LogLevel)))
+	connConfig.ConnConfig.Logger = zerologadapter.NewLogger(*logger)
 
 	// open connection to postgres
 	db.sqlDB = stdlib.OpenDB(*connConfig.ConnConfig)
@@ -105,7 +106,7 @@ func (db *DB) migrate(version int) (err error) {
 		MigrationsTable: "schema_migrations",
 	})
 	if err != nil {
-		return
+		return err
 	}
 
 	m, err := migrate.NewWithInstance("go-bindata", sourceInstance, "postgres", targetInstance)
