@@ -16,11 +16,9 @@ test:
 install: install-go-bindata install-sqlc
 
 install-go-bindata:
-	go get -v github.com/tmthrgd/go-bindata/go-bindata
 	go install github.com/tmthrgd/go-bindata/go-bindata
 
 install-sqlc:
-	go get -v github.com/kyleconroy/sqlc/cmd/sqlc
 	go install github.com/kyleconroy/sqlc/cmd/sqlc
 
 generate: generate-go-bindata generate-sqlc

@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
+	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/containerd/continuity v0.0.0-20190827140505-75bee3e2ccb6 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/golang-migrate/migrate/v4 v4.14.1
@@ -11,7 +12,7 @@ require (
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/jackc/pgx/v4 v4.11.0
 	github.com/json-iterator/go v1.1.10
-	github.com/kr/pretty v0.2.1 // indirect
+	github.com/kyleconroy/sqlc v1.7.0
 	github.com/lib/pq v1.10.1
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
@@ -27,11 +28,11 @@ require (
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
 	github.com/tmthrgd/go-bindata v0.0.0-20190904063317-a4b65675e0fb
+	github.com/tmthrgd/go-rand v0.0.0-20190904060720-34764beea44d // indirect
+	github.com/zach-klippenstein/goregen v0.0.0-20160303162051-795b5e3961ea // indirect
 	golang.org/x/sys v0.0.0-20210423082822-04245dca01da // indirect
 	golang.org/x/text v0.3.6 // indirect
-	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/guregu/null.v4 v4.0.0
 	gopkg.in/ini.v1 v1.62.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
