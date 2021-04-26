@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,7 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog/log"
+	json "github.com/json-iterator/go"
+	"github.com/rs/zerolog"
 )
 
 type Config struct {
@@ -21,9 +21,11 @@ type Client struct {
 	c *http.Client
 
 	conf *Config
+
+	logger *zerolog.Logger
 }
 
-func New(conf *Config) *Client {
+func New(conf *Config, logger *zerolog.Logger) *Client {
 	cli := &Client{}
 
 	cli.c = &http.Client{
@@ -39,6 +41,8 @@ func New(conf *Config) *Client {
 			cli.conf.TesterServiceAddress = "http://" + cli.conf.TesterServiceAddress
 		}
 	}
+
+	cli.logger = logger
 
 	return cli
 }
@@ -77,22 +81,22 @@ func (cli *Client) Do(ctx context.Context, objectIDs []int32) []*ObjectsRespBody
 				// if it's not the case then report the error
 				urlErr := err.(*url.Error)
 				if urlErr.Timeout() {
-					log.Logger.Warn().Err(err).Int32("id", id).Msg("failed to get object status due to timeout")
+					cli.logger.Warn().Err(err).Int32("id", id).Msg("failed to get object status due to timeout")
 				} else {
-					log.Logger.Warn().Err(err).Int32("id", id).Msg("failed to get object status due to unknown reason")
+					cli.logger.Warn().Err(err).Int32("id", id).Msg("failed to get object status due to unknown reason")
 				}
 				return
 			}
 			defer func() {
 				if err := resp.Body.Close(); err != nil {
-					log.Logger.Warn().Err(err).Msg("failed to close response body")
+					cli.logger.Warn().Err(err).Msg("failed to close response body")
 				}
 			}()
 
 			// decode object status
 			objStatus := ObjectsRespBody{}
 			if err := json.NewDecoder(resp.Body).Decode(&objStatus); err != nil {
-				log.Logger.Warn().Err(err).Msg("failed to decode response body")
+				cli.logger.Warn().Err(err).Msg("failed to decode response body")
 			}
 
 			objStatusesChan <- &objStatus
@@ -116,6 +120,8 @@ LOOP:
 			}
 		}
 	}
+
+	cli.c.CloseIdleConnections()
 
 	return objStatuses
 }

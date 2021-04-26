@@ -44,7 +44,7 @@ Test your code.
 
 # Tests & Behcmarks
 
-**NOTE:** to run tests and benchmarks Docker must be installed on system, because each test and benchmark is run in isolation using [ory/dockertest]("https://github.com/ory/dockertest") package
+**NOTE:** to run tests and benchmarks for database, Docker must be installed on system, because each test and benchmark is run in isolation using [ory/dockertest]("https://github.com/ory/dockertest") package
 
 To run the tests run **go** command:
 ```bash
@@ -54,6 +54,8 @@ go test -v ./...
 go test -v -coverprofile cover.out ./...
 go tool cover -html cover.out
 ```
+
+**NOTE:** you may hit limit of maximum amount of opened connections when running client package benchmark, so increase it using `ulimit -n 10000` command
 
 To run benchmarks run **go** command, it can take up to 1 minute or more:
 ```bash

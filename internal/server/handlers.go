@@ -32,24 +32,33 @@ func (srv *Server) handleCallback(rw http.ResponseWriter, r *http.Request) {
 	go func() {
 		log.Logger.Debug().Ints32("object_ids", body.ObjectIDs).Msg("request body")
 
+		var (
+			ids []int32
+			onlines []bool
+		)
+
+		// process only unique ids, so we don't send same id twice or thrice to server, for example if would receive 1,000,000 ids and 1/3 of them would be duplicates, then we would send 333,333 useless requests and waste time
+		uniqueIDs := make(map[int32]struct{})
+		ids = make([]int32, 0, len(body.ObjectIDs))
+		for _, id := range body.ObjectIDs {
+			_, ok := uniqueIDs[id]
+			if !ok {
+				uniqueIDs[id] = struct{}{}
+				ids = append(ids, id)
+			}
+		}
+
 		// timeout can be increased if server responds longer than 4 seconds
 		ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
 		defer cancel()
 
 		// send request to tester service and get online statuses for objects
-		objStatuses := srv.cli.Do(ctx, body.ObjectIDs)
-		
-		// process only unique ids and store them in array for sql query
-		uniqueIDs := make(map[int32]struct{})
-		ids := make([]int32, 0, len(objStatuses))
-		onlines := make([]bool, 0, len(objStatuses))
-		for _, v := range objStatuses {
-			_, ok := uniqueIDs[v.ID]
-			if !ok {
-				uniqueIDs[v.ID] = struct{}{}
-				ids = append(ids, v.ID)
-				onlines = append(onlines, v.Online)
-			}
+		objStatuses := srv.cli.Do(ctx, ids)
+
+		onlines = make([]bool, 0, len(body.ObjectIDs))
+		for i, obj := range objStatuses {
+			ids[i] = obj.ID
+			onlines[i] = obj.Online
 		}
 
 		// insert/update and delete objects

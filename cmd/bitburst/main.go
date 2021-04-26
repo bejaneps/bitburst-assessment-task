@@ -264,7 +264,7 @@ func main() {
 	}()
 
 	// set up client
-	cli := client.New(&conf.Client)
+	cli := client.New(&conf.Client, &log.Logger)
 
 	// set up server
 	srv := server.New(&conf.Server, database, cli)
