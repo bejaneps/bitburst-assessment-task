@@ -28,6 +28,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.insertObjectsOrUpdateStmt, err = db.PrepareContext(ctx, insertObjectsOrUpdate); err != nil {
 		return nil, fmt.Errorf("error preparing query InsertObjectsOrUpdate: %w", err)
 	}
+	if q.updateObjectsStmt, err = db.PrepareContext(ctx, updateObjects); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateObjects: %w", err)
+	}
 	return &q, nil
 }
 
@@ -41,6 +44,11 @@ func (q *Queries) Close() error {
 	if q.insertObjectsOrUpdateStmt != nil {
 		if cerr := q.insertObjectsOrUpdateStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing insertObjectsOrUpdateStmt: %w", cerr)
+		}
+	}
+	if q.updateObjectsStmt != nil {
+		if cerr := q.updateObjectsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateObjectsStmt: %w", cerr)
 		}
 	}
 	return err
@@ -84,6 +92,7 @@ type Queries struct {
 	tx                        *sql.Tx
 	deleteNotSeenObjectsStmt  *sql.Stmt
 	insertObjectsOrUpdateStmt *sql.Stmt
+	updateObjectsStmt         *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
@@ -92,5 +101,6 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		tx:                        tx,
 		deleteNotSeenObjectsStmt:  q.deleteNotSeenObjectsStmt,
 		insertObjectsOrUpdateStmt: q.insertObjectsOrUpdateStmt,
+		updateObjectsStmt:         q.updateObjectsStmt,
 	}
 }

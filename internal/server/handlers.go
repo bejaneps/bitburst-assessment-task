@@ -32,14 +32,9 @@ func (srv *Server) handleCallback(rw http.ResponseWriter, r *http.Request) {
 	go func() {
 		log.Logger.Debug().Ints32("object_ids", body.ObjectIDs).Msg("request body")
 
-		var (
-			ids []int32
-			onlines []bool
-		)
-
 		// process only unique ids, so we don't send same id twice or thrice to server, for example if would receive 1,000,000 ids and 1/3 of them would be duplicates, then we would send 333,333 useless requests and waste time
 		uniqueIDs := make(map[int32]struct{})
-		ids = make([]int32, 0, len(body.ObjectIDs))
+		ids := make([]int32, 0, len(body.ObjectIDs))
 		for _, id := range body.ObjectIDs {
 			_, ok := uniqueIDs[id]
 			if !ok {
@@ -55,20 +50,24 @@ func (srv *Server) handleCallback(rw http.ResponseWriter, r *http.Request) {
 		// send request to tester service and get online statuses for objects
 		objStatuses := srv.cli.Do(ctx, ids)
 
-		onlines = make([]bool, 0, len(body.ObjectIDs))
-		for i, obj := range objStatuses {
-			ids[i] = obj.ID
-			onlines[i] = obj.Online
+		onlineIDs := make([]int32, 0, len(ids))
+		offlineIDs := make([]int32, 0, len(ids))
+		for _, obj := range objStatuses {
+			if obj.Online {
+				onlineIDs = append(onlineIDs, obj.ID)
+			} else {
+				offlineIDs = append(offlineIDs, obj.ID)
+			}
 		}
 
 		// insert/update and delete objects
-		modifiedIDs, err := srv.database.InsertObjectsOrUpdate(ctx, ids, onlines)
+		insertedIDs, updatedIDs, err := srv.database.InsertObjectsOrUpdate(ctx, onlineIDs, offlineIDs)
 		if err != nil {
 			log.Logger.Err(err).Msg("failed to process objects in database")
 			return
 		}
 
-		log.Logger.Debug().Ints32("modified_ids", modifiedIDs).Msg("succeeded to process objects in database")
+		log.Logger.Info().Ints32("inserted_ids", insertedIDs).Ints32("updated_ids", updatedIDs).Msg("succeeded to process objects in database")
 	}()
 
 	// notify tester_service that we received objects successfully

@@ -1,7 +1,6 @@
 package db
 
 import (
-	"bitburst-assessment-task/internal/db/objects"
 	"context"
 	"database/sql"
 	"time"
@@ -87,12 +86,12 @@ func (db *DB) DeleteNotSeenObjects(ctx context.Context) {
 
 // InsertObjectsOrUpdate inserts objects in database if they don't exist,
 // else it updates it's online status and last_seen date
-func (db *DB) InsertObjectsOrUpdate(ctx context.Context, ids []int32, onlines []bool) (modifiedIDs []int32, err error) {
+func (db *DB) InsertObjectsOrUpdate(ctx context.Context, onlineIDs []int32, offlineIDs []int32) (insertedIDs []int32, updatedIDs []int32, err error) {
 	subLogger := db.logger.With().Str("func", "InsertObjectsOrUpdate").Logger()
 
 	conn, tx, err := db.startTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer func() { // release connection to pool
 		if err := conn.Close(); err != nil {
@@ -108,18 +107,20 @@ func (db *DB) InsertObjectsOrUpdate(ctx context.Context, ids []int32, onlines []
 	}()
 	txQ := db.q.WithTx(tx) // attach queries in tx
 
-	modifiedIDs, err = txQ.InsertObjectsOrUpdate(ctx, objects.InsertObjectsOrUpdateParams{
-		Column1: ids,
-		Column2: onlines,
-	})
+	insertedIDs, err = txQ.InsertObjectsOrUpdate(ctx, onlineIDs)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to insert/update objects")
+		return nil, nil, errors.WithMessage(err, "failed to insert/update objects")
+	}
+
+	updatedIDs, err = txQ.UpdateObjects(ctx, offlineIDs)
+	if err != nil {
+		return nil, nil, errors.WithMessage(err, "failed to update objects")
 	}
 
 	// commit transaction
 	if err := tx.Commit(); err != nil {
-		return nil, errors.WithMessage(err, "failed to commit transaction")
+		return nil, nil, errors.WithMessage(err, "failed to commit transaction")
 	}
 
-	return modifiedIDs, nil
+	return insertedIDs, updatedIDs, nil
 }

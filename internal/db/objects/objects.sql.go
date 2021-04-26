@@ -41,21 +41,46 @@ func (q *Queries) DeleteNotSeenObjects(ctx context.Context) ([]int32, error) {
 }
 
 const insertObjectsOrUpdate = `-- name: InsertObjectsOrUpdate :many
-INSERT INTO bitburst."objects" ( o_id, online )
-VALUES ( UNNEST($1::INT[]), UNNEST($2::BOOLEAN[]) ) ON CONFLICT ( o_id ) DO
+INSERT INTO bitburst."objects" ( o_id )
+VALUES ( UNNEST($1::INT[]) ) ON CONFLICT ( o_id ) DO
 UPDATE
-	SET last_seen = CURRENT_TIMESTAMP,
-		online = EXCLUDED.online
-	RETURNING o_id
+	SET last_seen = CURRENT_TIMESTAMP
+RETURNING o_id
 `
 
-type InsertObjectsOrUpdateParams struct {
-	Column1 []int32 `json:"column_1"`
-	Column2 []bool  `json:"column_2"`
+func (q *Queries) InsertObjectsOrUpdate(ctx context.Context, dollar_1 []int32) ([]int32, error) {
+	rows, err := q.query(ctx, q.insertObjectsOrUpdateStmt, insertObjectsOrUpdate, pq.Array(dollar_1))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int32
+	for rows.Next() {
+		var o_id int32
+		if err := rows.Scan(&o_id); err != nil {
+			return nil, err
+		}
+		items = append(items, o_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
-func (q *Queries) InsertObjectsOrUpdate(ctx context.Context, arg InsertObjectsOrUpdateParams) ([]int32, error) {
-	rows, err := q.query(ctx, q.insertObjectsOrUpdateStmt, insertObjectsOrUpdate, pq.Array(arg.Column1), pq.Array(arg.Column2))
+const updateObjects = `-- name: UpdateObjects :many
+UPDATE bitburst."objects"
+	SET online = false
+WHERE
+	o_id=ANY($1::INT[])
+RETURNING o_id
+`
+
+func (q *Queries) UpdateObjects(ctx context.Context, dollar_1 []int32) ([]int32, error) {
+	rows, err := q.query(ctx, q.updateObjectsStmt, updateObjects, pq.Array(dollar_1))
 	if err != nil {
 		return nil, err
 	}

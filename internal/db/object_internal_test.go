@@ -126,30 +126,39 @@ func TestInsertObjectsOrUpdate(t *testing.T) {
 	t.Cleanup(cancel)
 
 	t.Run("default", func(t *testing.T) {
-		ids := make([]int32, 0, 100)
-		onlines := make([]bool, 0, 100)
+		onlineIDs := make([]int32, 0, 100)
+		offlineIDs := make([]int32, 0, 100)
 		for i := 0; i < 100; i++ {
-			ids = append(ids, int32(i))
 			if i%2 == 0 {
-				onlines = append(onlines, true)
+				onlineIDs = append(onlineIDs, int32(i))
 			} else {
-				onlines = append(onlines, false)
+				offlineIDs = append(offlineIDs, int32(i))
 			}
 		}
 
-		modifiedIDs, err := database.InsertObjectsOrUpdate(ctx, ids, onlines)
+		insertedIDs, updatedIDs, err := database.InsertObjectsOrUpdate(ctx, onlineIDs, offlineIDs)
 		require.Nil(t, err, "failed to process objects")
 
-		assert.True(t, len(ids) == len(modifiedIDs), "length of initial id slice should have been equal to length of modified ids")
+		assert.True(t, len(insertedIDs) == len(onlineIDs), "length of inserted ids isn't equal to len of online ids")
+		assert.Equal(t, len(updatedIDs), 0, "length of updated ids isn't equal to 0")
 
 		// compare if two initial ids are equal to modified ids
-		idsMap := make(map[int32]struct{}, 100)
-		for _, id := range ids {
-			idsMap[id] = struct{}{}
+		onlineIDsMap := make(map[int32]struct{}, 100)
+		for _, id := range onlineIDs {
+			onlineIDsMap[id] = struct{}{}
 		}
-		for _, id := range modifiedIDs {
-			_, ok := idsMap[id]
-			assert.Truef(t, ok, "%d id exists in modified id slice and not in initial id slice", id)
+		for _, id := range insertedIDs {
+			_, ok := onlineIDsMap[id]
+			assert.Truef(t, ok, "%d id exists in inserted id slice and not in online id slice", id)
+		}
+
+		offlineIDsMap := make(map[int32]struct{}, 100)
+		for _, id := range offlineIDs {
+			offlineIDsMap[id] = struct{}{}
+		}
+		for _, id := range updatedIDs {
+			_, ok := offlineIDsMap[id]
+			assert.Truef(t, ok, "%d id exists in updated id slice and not in offline id slice", id)
 		}
 
 		// query database and get all objects
@@ -172,16 +181,9 @@ func TestInsertObjectsOrUpdate(t *testing.T) {
 		}
 		require.Nil(t, rows.Err(), "failed to read result rows")
 
-		// check if all initial ids were saved correct in database
+		// check if all online ids were saved correct in database
 		for _, r := range rs {
-			_, ok := idsMap[r.OID]
-			if assert.Truef(t, ok, "%d id exists in database and not in initial id slice", r.OID) {
-				if r.OID%2 == 0 {
-					assert.Truef(t, r.Online == true, "% id has online false in database, when it should be true", r.OID)
-				} else {
-					assert.Truef(t, r.Online == false, "% id has online true in database, when it should be false", r.OID)
-				}
-			}
+			assert.True(t, r.Online == true, "%d id has online false, when it should be true")
 		}
 	})
 }
@@ -204,30 +206,39 @@ func TestDeleteNotSeenObjects(t *testing.T) {
 	t.Cleanup(cancel)
 
 	t.Run("default", func(t *testing.T) {
-		ids := make([]int32, 0, 10)
-		onlines := make([]bool, 0, 10)
-		for i := 0; i < 10; i++ {
-			ids = append(ids, int32(i))
+		onlineIDs := make([]int32, 0, 100)
+		offlineIDs := make([]int32, 0, 100)
+		for i := 0; i < 100; i++ {
 			if i%2 == 0 {
-				onlines = append(onlines, true)
+				onlineIDs = append(onlineIDs, int32(i))
 			} else {
-				onlines = append(onlines, false)
+				offlineIDs = append(offlineIDs, int32(i))
 			}
 		}
 
-		modifiedIDs, err := database.InsertObjectsOrUpdate(ctx, ids, onlines)
+		insertedIDs, updatedIDs, err := database.InsertObjectsOrUpdate(ctx, onlineIDs, offlineIDs)
 		require.Nil(t, err, "failed to process objects")
 
-		assert.True(t, len(ids) == len(modifiedIDs), "length of initial id slice should have been equal to length of modified ids")
+		assert.True(t, len(insertedIDs) == len(onlineIDs), "length of inserted ids isn't equal to len of online ids")
+		assert.Equal(t, len(updatedIDs), 0, "length of updated ids isn't equal to 0")
 
 		// compare if two initial ids are equal to modified ids
-		idsMap := make(map[int32]struct{}, 10)
-		for _, id := range ids {
-			idsMap[id] = struct{}{}
+		onlineIDsMap := make(map[int32]struct{}, 100)
+		for _, id := range onlineIDs {
+			onlineIDsMap[id] = struct{}{}
 		}
-		for _, id := range modifiedIDs {
-			_, ok := idsMap[id]
-			assert.Truef(t, ok, "%d id exists in modified id slice and not in initial id slice", id)
+		for _, id := range insertedIDs {
+			_, ok := onlineIDsMap[id]
+			assert.Truef(t, ok, "%d id exists in inserted id slice and not in online id slice", id)
+		}
+
+		offlineIDsMap := make(map[int32]struct{}, 100)
+		for _, id := range offlineIDs {
+			offlineIDsMap[id] = struct{}{}
+		}
+		for _, id := range updatedIDs {
+			_, ok := offlineIDsMap[id]
+			assert.Truef(t, ok, "%d id exists in updated id slice and not in offline id slice", id)
 		}
 
 		// start object deleter and wait 31 seconds to check if objects got deleted or no
@@ -273,31 +284,30 @@ func BenchmarkInsertObjectsOrUpdate(b *testing.B) {
 
 		// using map to remove duplicates
 		var (
-			ids     []int32
-			onlines []bool
-			idsMap  map[int32]struct{}
+			onlineIDs  []int32
+			offlineIDs []int32
+			idsMap     map[int32]struct{}
 		)
 		for pb.Next() {
 			idsLen := rng.Int31n(200)
-			ids = make([]int32, 0, idsLen)
-			onlines = make([]bool, 0, idsLen)
+			onlineIDs = make([]int32, 0, idsLen)
+			offlineIDs = make([]int32, 0, idsLen)
 			idsMap = make(map[int32]struct{}, idsLen)
 			for i := 0; i < len(idsMap); i++ {
 				num := rng.Int31() % 100
 				_, ok := idsMap[num]
 				if !ok {
 					idsMap[num] = struct{}{}
-					ids = append(ids, num)
 					if num%2 == 0 {
-						onlines = append(onlines, true)
+						onlineIDs = append(onlineIDs, num)
 					} else {
-						onlines = append(onlines, false)
+						offlineIDs = append(offlineIDs, num)
 					}
 				}
 			}
 		}
 
-		_, err := database.InsertObjectsOrUpdate(ctx, ids, onlines)
+		_, _, err := database.InsertObjectsOrUpdate(ctx, onlineIDs, offlineIDs)
 		require.Nil(b, err, "failed to insert or update objects")
 	})
 }

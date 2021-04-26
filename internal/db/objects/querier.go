@@ -8,7 +8,8 @@ import (
 
 type Querier interface {
 	DeleteNotSeenObjects(ctx context.Context) ([]int32, error)
-	InsertObjectsOrUpdate(ctx context.Context, arg InsertObjectsOrUpdateParams) ([]int32, error)
+	InsertObjectsOrUpdate(ctx context.Context, dollar_1 []int32) ([]int32, error)
+	UpdateObjects(ctx context.Context, dollar_1 []int32) ([]int32, error)
 }
 
 var _ Querier = (*Queries)(nil)
