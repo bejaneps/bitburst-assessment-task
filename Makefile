@@ -30,7 +30,11 @@ generate-sqlc:
 	sqlc generate
 
 build:
-	go build -trimpath -ldflags "${LDFLAGS}" -o ./bin/bitburst ./cmd/bitburst/*.go
+	go build -trimpath -ldflags "${LDFLAGS}" -o ./bin/bitburst ./cmd/bitburst/main.go
+
+build-darwin-linux:
+	GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "${LDFLAGS}" -o ./bin/bitburst_darwin_amd64 ./cmd/bitburst/main.go
+	GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "${LDFLAGS}" -o ./bin/bitburst_linux_amd64 ./cmd/bitburst/main.go
 
 run:
 	./bin/bitburst --log-beautify

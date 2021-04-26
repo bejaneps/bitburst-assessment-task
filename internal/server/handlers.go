@@ -32,8 +32,12 @@ func (srv *Server) handleCallback(rw http.ResponseWriter, r *http.Request) {
 	go func() {
 		log.Logger.Debug().Ints32("object_ids", body.ObjectIDs).Msg("request body")
 
+		// timeout can be increased if server responds longer than 4 seconds
+		ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+		defer cancel()
+
 		// send request to tester service and get online statuses for objects
-		objStatuses := srv.cli.Do(body.ObjectIDs)
+		objStatuses := srv.cli.Do(ctx, body.ObjectIDs)
 		
 		// process only unique ids and store them in array for sql query
 		uniqueIDs := make(map[int32]struct{})
@@ -49,9 +53,6 @@ func (srv *Server) handleCallback(rw http.ResponseWriter, r *http.Request) {
 		}
 
 		// insert/update and delete objects
-		ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
-		defer cancel()
-
 		modifiedIDs, err := srv.database.InsertObjectsOrUpdate(ctx, ids, onlines)
 		if err != nil {
 			log.Logger.Err(err).Msg("failed to process objects in database")

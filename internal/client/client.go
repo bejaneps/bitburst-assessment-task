@@ -1,10 +1,12 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,6 +34,12 @@ func New(conf *Config) *Client {
 
 	cli.conf = conf
 
+	if !strings.Contains(cli.conf.TesterServiceAddress, "http://") {
+		if !strings.Contains(cli.conf.TesterServiceAddress, "https://") {
+			cli.conf.TesterServiceAddress = "http://" + cli.conf.TesterServiceAddress
+		}
+	}
+
 	return cli
 }
 
@@ -43,10 +51,11 @@ type ObjectsRespBody struct {
 
 // Do sends a list of object ids to tester service concurrently,
 // and gets their online statuses.
-func (cli *Client) Do(objectIDs []int32) []*ObjectsRespBody {
+func (cli *Client) Do(ctx context.Context, objectIDs []int32) []*ObjectsRespBody {
 	objStatuses := make([]*ObjectsRespBody, 0, len(objectIDs))
 	objStatusesChan := make(chan *ObjectsRespBody, len(objectIDs))
-	go func() { // receive object ids from goroutines
+	// receive object ids from goroutines concurrently, so we read ids from buffer at the same time they are sent
+	go func() {
 		for obj := range objStatusesChan {
 			objStatuses = append(objStatuses, obj)
 		}
@@ -62,7 +71,7 @@ func (cli *Client) Do(objectIDs []int32) []*ObjectsRespBody {
 			defer wg.Done()
 
 			// get the object status
-			resp, err := cli.c.Get(fmt.Sprintf("http://%s/objects/%d", cli.conf.TesterServiceAddress, id))
+			resp, err := cli.c.Get(fmt.Sprintf("%s/objects/%d", cli.conf.TesterServiceAddress, id))
 			if err != nil {
 				// usually client requests default to timeout errors,
 				// if it's not the case then report the error
@@ -92,7 +101,21 @@ func (cli *Client) Do(objectIDs []int32) []*ObjectsRespBody {
 
 	// wait for all requests to be processesed
 	wg.Wait()
-	close(objStatusesChan)
+
+	// wait until the last obj is received from channel and appended to objStatuses slice, or until context timeout is reached
+LOOP:
+	for {
+		select {
+		case <-ctx.Done():
+			close(objStatusesChan)
+			break LOOP
+		default:
+			if len(objStatuses) == len(objectIDs) {
+				close(objStatusesChan)
+				break LOOP
+			}
+		}
+	}
 
 	return objStatuses
 }
