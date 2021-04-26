@@ -93,6 +93,8 @@ docker compose up
 
 # Notes
 
+I named the module(in go.mod) **bitburst-assessment-task** without github.com/bejaneps prefix, because I don't intend this code to be imported by any other packages
+
 In a production environment metrics, tracing and error reporting are usually set for the service, but for the sake of brewity I didn't include them in application. Also, one might think that for such small task all this packages are overkill, but in reality when writing production grade services, code complexity grows, more features are added, and so this packages help to eliminate boilerplate coding and follow DRY principle, and even improve performance
 
 For configuration management I used [spf13/viper]("https://github.com/spf13/viper") package, as it's the best solution available for Go configuration management
